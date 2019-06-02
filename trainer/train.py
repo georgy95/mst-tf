@@ -63,7 +63,6 @@ def train_mst(
         for Fcs, Ic, Is in ds.take(steps_per_epoch):
 
             Ics = train_step(Fcs, Ic, Is)
-            print(Ics)
 
         # Tensorboard
         mean_loss = loss_metric.result()
@@ -95,13 +94,13 @@ def parse_args():
 
     parser.add_argument(
         '-datapath', '--datapath',
-        type=str,
+        type=str, default='./data/',
         help='Folder with training images'
     )
      
     parser.add_argument(
         '-job-dir', '--job-dir',
-        type=str, default='./trainer/data/',
+        type=str, default='./jobs/1/',
         help='Job Directory'
     )
 

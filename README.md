@@ -1,12 +1,18 @@
 # Implementation in TF 2.0.0a
 
-Paper implementation of MST via graph cuts.
-
+Paper implementation of [Multimodal Style Transfer via Graph Cuts](https://arxiv.org/abs/1904.04443)
 
 ## Results
 To be added later.
 
 ## Training
+
+To start local training, simply run:
+
+```
+cd trainer
+python train.py
+```
 
 ### Data Structure
 

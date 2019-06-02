@@ -1,0 +1,8 @@
+{
+  "trainingInput": {
+    "scaleTier": "CUSTOM",
+    "masterType": "n1-standard-32",
+    "runtimeVersion": "1.13",
+    "pythonVersion": "3.5"
+  }
+}

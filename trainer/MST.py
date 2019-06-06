@@ -66,21 +66,23 @@ class MST:
         Mirrors the VGG network with max-pooling layers replaces by UpScaling Layers
         """
 
+        activation = 'elu'
+
         Fcs = Input((None, None, 512))
-        x = Conv2DTranspose(filters=256, kernel_size=self.kernel_size, padding='same', bias_initializer='zeros', activation='relu', kernel_initializer='glorot_uniform')(Fcs)
+        x = Conv2D(filters=256, kernel_size=self.kernel_size, padding='same', bias_initializer='zeros', activation=activation)(Fcs)
 
         x = UpSampling2D()(x)
         for _ in range(3):
-            x = Conv2DTranspose(filters=256, kernel_size=self.kernel_size, padding='same', activation='relu', bias_initializer='zeros')(x)
-        x = Conv2DTranspose(filters=128, kernel_size=self.kernel_size, padding='same', activation='relu', bias_initializer='zeros')(x)
+            x = Conv2D(filters=256, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
+        x = Conv2D(filters=128, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
         
         x = UpSampling2D()(x)
-        x = Conv2DTranspose(filters=128, kernel_size=self.kernel_size, padding='same', activation='relu', bias_initializer='zeros')(x)
-        x = Conv2DTranspose(filters=64, kernel_size=self.kernel_size, padding='same', activation='relu', bias_initializer='zeros')(x)
+        x = Conv2D(filters=128, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
+        x = Conv2D(filters=64, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
 
         x = UpSampling2D()(x)
-        x = Conv2DTranspose(filters=64, kernel_size=self.kernel_size, padding='same', activation='relu', bias_initializer='zeros')(x)
-        x = Conv2DTranspose(filters=3, kernel_size=self.kernel_size, padding='same', bias_initializer='zeros')(x)
+        x = Conv2D(filters=64, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
+        x = Conv2D(filters=3, kernel_size=self.kernel_size, padding='same')(x)
 
         model = Model(inputs=Fcs, outputs=x)
 
@@ -109,7 +111,7 @@ class MST:
             return loss
 
         def style_loss(y_pred, y_true):
-            style_loss = 0.
+            style_loss = 0.0
         
             for _ in range(4):
                 d_map, s_map = vgg_model(y_pred)[_], vgg_model(y_true)[_]

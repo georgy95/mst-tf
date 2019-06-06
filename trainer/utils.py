@@ -205,13 +205,12 @@ class DataLoader(object):
 
     def gen(self):
         while True:
-            while True:
-                try:
-                    Fcs, Ic, Is = self.load_batch() 
-                    yield Fcs, Ic, Is
-                except Exception as e:
-                    print(e)
-                    continue
+            try:
+                Fcs, Ic, Is = self.load_batch() 
+                yield Fcs, Ic, Is
+            except Exception as e:
+                print(e)
+                continue
 
     def __call__(self):
         while True:
@@ -240,7 +239,7 @@ class DataLoader(object):
         Fs = np.array(self.vgg(vgg_style_img))
         Fc = np.array(self.vgg(vgg_content_img))
 
-        alpha = np.random.uniform(low=0.8, high=1)
+        alpha = np.random.uniform(low=1, high=1)
         Fcs = get_Fcs(Fc, Fs, k=self.k, alpha=alpha)
 
         return Fcs, content_img, style_img

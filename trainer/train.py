@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 import tensorflow as tf
 from trainer.MST import MST
 from trainer.utils import create_tf_dataset, plot_test_images
+from datetime import datetime
 
 
 def train_mst(
@@ -27,8 +28,8 @@ def train_mst(
     ds = ds.map(map_func=lambda Ics,Ic,Is: (Ics, Ic, Is), num_parallel_calls=32).prefetch(buffer_size=8)
     ds = ds.batch(batch_size)
 
-    # create optimizer
-    opt = tf.optimizers.RMSprop(5e-4)
+    # create optimizera
+    opt = tf.optimizers.Adam(1e-3)
 
     # tensorboard summary
     summary_writer = tf.summary.create_file_writer(log_tensorboard_path)
@@ -44,14 +45,14 @@ def train_mst(
             Ics = model.decoder(Fcs)
             content_loss, style_loss = model.get_loss(Ics, Ic, Is, batch_size=batch_size)
             loss = 0.01 * style_loss + content_loss
+            gradients = tape.gradient(loss, model.decoder.trainable_variables)
+            opt.apply_gradients(zip(gradients, model.decoder.trainable_variables))
 
-        gradients = tape.gradient(loss, model.decoder.trainable_variables)
-        opt.apply_gradients(zip(gradients, model.decoder.trainable_variables))
-        # Update the metrics
-        loss_metric.update_state(loss)
-        content_loss_metric.update_state(content_loss)
-        style_loss_metric.update_state(style_loss)
-        return Ics
+            # Update the metrics
+            loss_metric.update_state(loss)
+            content_loss_metric.update_state(content_loss)
+            style_loss_metric.update_state(style_loss)
+            return Ics
 
 
     for epoch in range(num_epochs):
@@ -60,9 +61,15 @@ def train_mst(
         style_loss_metric.reset_states()
         content_loss_metric.reset_states()
 
-        for Fcs, Ic, Is in ds.take(steps_per_epoch):
+        data_get = datetime.now()
 
+        for Fcs, Ic, Is in ds.take(steps_per_epoch):
+            print('Data gen took ', (datetime.now() - data_get).seconds)
+            start = datetime.now()
             Ics = train_step(Fcs, Ic, Is)
+            print('Training step took ', (datetime.now() - start).seconds)
+            data_get = datetime.now()
+
 
         # Tensorboard
         mean_loss = loss_metric.result()
@@ -83,9 +90,9 @@ def train_mst(
 
         # Print Logs
         print('Epoch: ', epoch)
-        print('Loss: {:.3f}'.format(mean_loss))
-        print('Content Loss: {:.3f}'.format(mean_content_loss))
-        print('Style Loss: {:.3f}'.format(mean_style_loss))
+        print('Loss: {:.3f}'.format(mean_loss / 1000000))
+        print('Content Loss: {:.3f}'.format(mean_content_loss / 1000000))
+        print('Style Loss: {:.3f}'.format(mean_style_loss / 1000000))
 
    
 
@@ -129,7 +136,7 @@ if __name__ == '__main__':
         "batch_size": 1, 
         "datapath": args.datapath,
         "num_epochs":1000,
-        "steps_per_epoch": 1,
+        "steps_per_epoch": 30,
         "decoder_weights": args.weights,
         "log_weight_path": os.path.join(args.job_dir, 'weights'),
         "log_tensorboard_path": os.path.join(args.job_dir, 'tensorboard'),        

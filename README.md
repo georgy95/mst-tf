@@ -1,18 +1,17 @@
-# Implementation in TF 2.0.0a
+# Multimodal Style Transfer via Graph Cuts Implementation in TF 2.0.0a
 
 Paper implementation of [Multimodal Style Transfer via Graph Cuts](https://arxiv.org/abs/1904.04443)
 
-## Results
-To be added later.
-
 ## Training
 
-To start local training, simply run:
+To start local training (after building the image datapath structure), simply run:
 
 ```
 cd trainer
 python train.py
 ```
+
+or see below
 
 ### Data Structure
 
@@ -21,9 +20,9 @@ To load the data we assume the following structure, both locally and remotely:
 trainer
 -- data
   -- content
-    -- content_images_*.png
+    -- images_*.png
   -- style
-    -- style_images_*.png
+    -- images_*.png
 ```
 
 ### Local

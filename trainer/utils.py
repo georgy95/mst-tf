@@ -145,7 +145,7 @@ class DataLoader(object):
         self.im_shape = (None, None, 3)
         self.crop_im_shape = (256, 256, 3)
         self.total_imgs = None
-        self.k = 3
+        self.k = 1
         self.vgg = self.build_vgg()
         print('Initiating DataLoader with data from {}'.format(datapath))
         
@@ -239,8 +239,10 @@ class DataLoader(object):
         Fs = np.array(self.vgg(vgg_style_img))
         Fc = np.array(self.vgg(vgg_content_img))
 
-        alpha = np.random.uniform(low=1, high=1)
-        Fcs = get_Fcs(Fc, Fs, k=self.k, alpha=alpha)
+        # alpha = np.random.uniform(low=1, high=1)
+        # Fcs = get_Fcs(Fc, Fs, k=self.k, alpha=alpha)
+
+        Fcs = Fc.reshape((32, 32, 512))
 
         return Fcs, content_img, style_img
 
@@ -324,10 +326,16 @@ def plot_test_images(Ics, Ic, Is, log_test_path, epoch, filename='test_output'):
     Ics = np.array(Ics)
 
     Ocs = restore_original_image(Ics, 'channels_last')
-    Ocs = np.clip(Ocs, 0, 255) # clip the output to 0 - 255 range
     Oc = restore_original_image(Ic, 'channels_last')
     Os = restore_original_image(Is, 'channels_last')
 
+
+    print(Ocs)
+    print('Ocs ', np.where(Ocs == 255, 1, 0).sum())
+    print('Ocs ', np.where(Ocs == 0, 1, 0).sum())
+
+    print('Oc ', np.where(Oc == 255, 1, 0).sum())
+    print('Os ', np.where(Os == 255, 1, 0).sum())
 
     # Images and titles
     images = {
@@ -335,8 +343,7 @@ def plot_test_images(Ics, Ic, Is, log_test_path, epoch, filename='test_output'):
         'Style': Os, 
         'Output': Ocs
     }
-
-    # Plot the images. Note: rescaling and using squeeze since we are getting batches of size 1                    
+                  
     fig, axes = plt.subplots(1, 3, figsize=(40, 10))
     for i, (title, img) in enumerate(images.items()):
         axes[i].imshow(img)
@@ -344,10 +351,9 @@ def plot_test_images(Ics, Ic, Is, log_test_path, epoch, filename='test_output'):
         axes[i].axis('off')
 
     plt.suptitle('{} - Epoch: {}'.format(filename, epoch))
-
-    # Save directory            
+       
     file_name = "{}-Epoch_{}.png".format(filename, epoch)
-    # save the plot
+    # Save the plot
 
     print('Saving the plot')
     if log_test_path.startswith('gs://'):

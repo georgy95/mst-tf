@@ -25,11 +25,11 @@ def train_mst(
 
     # create data input
     ds = create_tf_dataset(datapath=datapath)
-    ds = ds.map(map_func=lambda Ics,Ic,Is: (Ics, Ic, Is), num_parallel_calls=32).prefetch(buffer_size=8)
+    ds = ds.map(map_func=lambda Fcs,Ic,Is: (Fcs, Ic, Is), num_parallel_calls=32).prefetch(buffer_size=8)
     ds = ds.batch(batch_size)
 
     # create optimizera
-    opt = tf.optimizers.Adam(1e-3)
+    opt = tf.optimizers.Adam(5e-4)
 
     # tensorboard summary
     summary_writer = tf.summary.create_file_writer(log_tensorboard_path)
@@ -41,18 +41,19 @@ def train_mst(
 
     @tf.function
     def train_step(Fcs, Ic, Is):
+
         with tf.GradientTape() as tape:
             Ics = model.decoder(Fcs)
             content_loss, style_loss = model.get_loss(Ics, Ic, Is, batch_size=batch_size)
-            loss = 0.01 * style_loss + content_loss
+            loss = 0. * style_loss + content_loss
             gradients = tape.gradient(loss, model.decoder.trainable_variables)
             opt.apply_gradients(zip(gradients, model.decoder.trainable_variables))
 
-            # Update the metrics
-            loss_metric.update_state(loss)
-            content_loss_metric.update_state(content_loss)
-            style_loss_metric.update_state(style_loss)
-            return Ics
+        # Update the metrics
+        loss_metric.update_state(loss)
+        content_loss_metric.update_state(content_loss)
+        style_loss_metric.update_state(style_loss)
+        return Ics
 
 
     for epoch in range(num_epochs):
@@ -61,14 +62,8 @@ def train_mst(
         style_loss_metric.reset_states()
         content_loss_metric.reset_states()
 
-        data_get = datetime.now()
-
         for Fcs, Ic, Is in ds.take(steps_per_epoch):
-            print('Data gen took ', (datetime.now() - data_get).seconds)
-            start = datetime.now()
             Ics = train_step(Fcs, Ic, Is)
-            print('Training step took ', (datetime.now() - start).seconds)
-            data_get = datetime.now()
 
 
         # Tensorboard
@@ -83,16 +78,16 @@ def train_mst(
 
         # Save Weights
         model.save_decoder_weights(log_weight_path, epoch=epoch)
-
+    
         # Print output
         print('Testing images')
         plot_test_images(Ics[0, ...], Ic[0, ...], Is[0, ...], log_test_path, epoch)
 
         # Print Logs
         print('Epoch: ', epoch)
-        print('Loss: {:.3f}'.format(mean_loss / 1000000))
-        print('Content Loss: {:.3f}'.format(mean_content_loss / 1000000))
-        print('Style Loss: {:.3f}'.format(mean_style_loss / 1000000))
+        print('Loss: {:.3f}'.format(mean_loss / 100000))
+        print('Content Loss: {:.3f}'.format(mean_content_loss / 100000))
+        print('Style Loss: {:.3f}'.format(mean_style_loss / 100000))
 
    
 
@@ -136,7 +131,7 @@ if __name__ == '__main__':
         "batch_size": 1, 
         "datapath": args.datapath,
         "num_epochs":1000,
-        "steps_per_epoch": 30,
+        "steps_per_epoch": 300,
         "decoder_weights": args.weights,
         "log_weight_path": os.path.join(args.job_dir, 'weights'),
         "log_tensorboard_path": os.path.join(args.job_dir, 'tensorboard'),        

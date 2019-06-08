@@ -45,7 +45,7 @@ def train_mst(
         with tf.GradientTape() as tape:
             Ics = model.decoder(Fcs)
             content_loss, style_loss = model.get_loss(Ics, Ic, Is, batch_size=batch_size)
-            loss = 0. * style_loss + content_loss
+            loss = 0.01 * style_loss + content_loss
             gradients = tape.gradient(loss, model.decoder.trainable_variables)
             opt.apply_gradients(zip(gradients, model.decoder.trainable_variables))
 

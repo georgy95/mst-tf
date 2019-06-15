@@ -33,10 +33,11 @@ else:
     import matplotlib.pyplot as plt
 
 
-def get_Fcs(Fc, Fs, k=3, alpha=0.5):
+def get_Fcs(Fc, Fs, k=3, alpha=1):
 
-    vgg_feature_h = Fc.shape[1]
-    vgg_feature_w = Fc.shape[2]
+    vgg_feature_h = Fc.shape[1] # H
+    vgg_feature_w = Fc.shape[2] # W
+    vgg_feature_c = Fc.shape[3] # 512
 
     Fs = Fs.reshape((-1, 512)).astype(np.float64) 
     Fc = Fc.reshape((-1, 512)).astype(np.float64)
@@ -49,10 +50,12 @@ def get_Fcs(Fc, Fs, k=3, alpha=0.5):
 
     def get_style_feature_map(KM):
         return KM.labels_
+
+        # compare 1024, 512 with 3, 512 -> 
     
-    def get_content_feature_map(Fc, KM, k, l=0.3):
+    def get_content_feature_map(Fc, KM, k, l=0.1):
         V = np.ones((k, )) * l - np.identity(k) * l
-        D = np.stack([cosine_distances(Fc, KM.cluster_centers_[i].reshape((1, -1))) for i in range(k)], axis=-1).reshape((vgg_feature_h, vgg_feature_w, -1)).astype(np.double)
+        D = cosine_distances(Fc.reshape((vgg_feature_h * vgg_feature_w, vgg_feature_c)), KM.cluster_centers_).reshape((vgg_feature_h, vgg_feature_w, -1)).astype(np.float64)
         content_labels = aexpansion_grid(D, V, max_cycles=None, labels=None)
         return content_labels
 
@@ -63,7 +66,8 @@ def get_Fcs(Fc, Fs, k=3, alpha=0.5):
             return np.all(np.linalg.eigvals(x) >= -epsilon)
 
         # create a dummy array
-        Fcs = Fc.copy() # (1024, 512)
+        # Fcs = Fc.copy()
+        Fcs = np.zeros(shape=Fc.shape) # (HW, C)
 
         # for each cluster, get corresponding Fc and Fs and update them
         for j in range(k):
@@ -98,7 +102,7 @@ def get_Fcs(Fc, Fs, k=3, alpha=0.5):
 
             # Content
             fcfc = np.dot(fc, fc.T) / (fc.shape[1] - 1) # CxC
-            assert is_pos_def(fcfc), 'Must be +ve definite'
+            # assert is_pos_def(fcfc), 'Must be +ve definite'
             Ec, wc, _ = np.linalg.svd(fcfc) # CxC
             k_c = (wc > 1e-5).sum()
             Dc = np.diag((wc[:k_c]+epsilon)**-0.5)
@@ -106,7 +110,7 @@ def get_Fcs(Fc, Fs, k=3, alpha=0.5):
 
             # Style
             fsfs = np.dot(fs, fs.T) / (fs.shape[1] - 1)
-            assert is_pos_def(fsfs), 'Must be +ve definite'
+            # assert is_pos_def(fsfs), 'Must be +ve definite'
             Es, ws, _ = np.linalg.svd(fsfs)
             k_s = (ws > 1e-5).sum()
             Ds = np.sqrt(np.diag(ws[:k_s]+epsilon))
@@ -126,9 +130,9 @@ def get_Fcs(Fc, Fs, k=3, alpha=0.5):
 
         return Fcs
 
-    KM = apply_kmeans(Fs, k)
-    Ls = get_style_feature_map(KM)
-    Lc = get_content_feature_map(Fc, KM, k)
+    KM = apply_kmeans(Fs, k) 
+    Ls = get_style_feature_map(KM) # (1024, 512)
+    Lc = get_content_feature_map(Fc, KM, k) # (32, 32)
     Fcs = calc_Fcs(Fc, Fs, Lc, Ls, a=alpha, k=k).reshape((vgg_feature_h, vgg_feature_w, 512))
 
     return Fcs
@@ -145,7 +149,7 @@ class DataLoader(object):
         self.im_shape = (None, None, 3)
         self.crop_im_shape = (256, 256, 3)
         self.total_imgs = None
-        self.k = 1
+        self.k = 3
         self.vgg = self.build_vgg()
         print('Initiating DataLoader with data from {}'.format(datapath))
         
@@ -195,11 +199,15 @@ class DataLoader(object):
         y = np.random.randint(0, height - dy + 1)
         return img[y:(y+dy), x:(x+dx), :]
     
-    def load_img(self, path):
+    def load_img(self, path, content=True):
         if path.startswith('gs://'):
             path = file_io.FileIO(path, 'rb')
-        img = image.load_img(path, target_size=(256,256))
-        img = self.random_crop(np.array(img), random_crop_size=(self.crop_im_shape[0], self.crop_im_shape[1]))
+        if content:
+            img = image.load_img(path)
+            img = self.random_crop(np.array(img), random_crop_size=(self.crop_im_shape[0], self.crop_im_shape[1]))
+        else:
+            img = image.load_img(path, target_size=(256,256))
+
         img = preprocess_input(np.array(img))
         return img
 
@@ -210,6 +218,7 @@ class DataLoader(object):
                 yield Fcs, Ic, Is
             except Exception as e:
                 print(e)
+                print('Continuing with the process')
                 continue
 
     def __call__(self):
@@ -229,11 +238,11 @@ class DataLoader(object):
         """Loads a batch of images from datapath folder"""     
 
         content_idx = np.random.randint(0, self.num_content_pics)
-        content_img = self.load_img(self.content_img_paths[content_idx])
+        content_img = self.load_img(self.content_img_paths[content_idx], content=False)
         vgg_content_img = np.expand_dims(content_img, 0)
 
         style_idx = np.random.randint(0, self.num_style_pics)
-        style_img = self.load_img(self.style_img_paths[style_idx])
+        style_img = self.load_img(self.style_img_paths[style_idx], content=False)
         vgg_style_img = np.expand_dims(style_img, 0)
 
         Fs = np.array(self.vgg(vgg_style_img))
@@ -328,12 +337,11 @@ def plot_test_images(Ics, Ic, Is, log_test_path, epoch, filename='test_output'):
     Os = restore_original_image(Is, 'channels_last')
 
 
-    print(Ocs)
-    print('Ocs ', np.where(Ocs == 255, 1, 0).sum())
-    print('Ocs ', np.where(Ocs == 0, 1, 0).sum())
+    # print('Ocs ', np.where(Ocs == 255, 1, 0).sum())
+    # print('Ocs ', np.where(Ocs == 0, 1, 0).sum())
 
-    print('Oc ', np.where(Oc == 255, 1, 0).sum())
-    print('Os ', np.where(Os == 255, 1, 0).sum())
+    # print('Oc ', np.where(Oc == 255, 1, 0).sum())
+    # print('Os ', np.where(Os == 255, 1, 0).sum())
 
     # Images and titles
     images = {

@@ -66,7 +66,7 @@ class MST:
         Mirrors the VGG network with max-pooling layers replaces by UpScaling Layers
         """
 
-        activation = 'elu'
+        activation = 'relu'
 
         Fcs = Input((None, None, 512))
         x = Conv2D(filters=256, kernel_size=self.kernel_size, padding='same', bias_initializer='zeros', activation=activation)(Fcs)
@@ -89,7 +89,7 @@ class MST:
         return model
 
 
-    def get_loss(self, Ics, Ic, Is, batch_size=2, epsilon=1e-6):
+    def get_loss(self, Ics, Ic, Is, batch_size=1, epsilon=1e-6):
 
         vgg_model = self.vgg_loss_model
 

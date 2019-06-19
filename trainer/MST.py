@@ -71,16 +71,16 @@ class MST:
         Fcs = Input((None, None, 512))
         x = Conv2D(filters=256, kernel_size=self.kernel_size, padding='same', bias_initializer='zeros', activation=activation)(Fcs)
 
-        x = UpSampling2D()(x)
+        x = UpSampling2D(interpolation='bilinear')(x)
         for _ in range(3):
             x = Conv2D(filters=256, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
         x = Conv2D(filters=128, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
         
-        x = UpSampling2D()(x)
+        x = UpSampling2D(interpolation='bilinear')(x)
         x = Conv2D(filters=128, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
         x = Conv2D(filters=64, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
 
-        x = UpSampling2D()(x)
+        x = UpSampling2D(interpolation='bilinear')(x)
         x = Conv2D(filters=64, kernel_size=self.kernel_size, padding='same', activation=activation)(x)
         x = Conv2D(filters=3, kernel_size=self.kernel_size, padding='same')(x)
 
@@ -103,10 +103,10 @@ class MST:
 
         def content_loss(y_pred, y_true):
             current, target = vgg_model(y_pred)[3], vgg_model(y_true)[3]
-            diff = current - target
-            sq = K.square(diff)
-            loss = K.mean(sq)
-            # loss = tf.reduce_mean(tf.math.squared_difference(y_pred, y_true)) # MSE 
+            # diff = current - target
+            # sq = K.square(diff)
+            # loss = K.mean(sq)
+            loss = mse(current, target) # MSE 
 
             return loss
 
@@ -122,8 +122,8 @@ class MST:
                 d_std = tf.sqrt(d_var + epsilon)
                 s_std = tf.sqrt(s_var + epsilon)
 
-                mu_loss = sse(d_mean, s_mean) / batch_size
-                std_loss = sse(d_std, s_std) / batch_size
+                mu_loss = mse(d_mean, s_mean) / batch_size
+                std_loss = mse(d_std, s_std) / batch_size
 
                 mu_std_loss = mu_loss + std_loss
                 style_loss += mu_std_loss

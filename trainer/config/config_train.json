@@ -1,8 +1,15 @@
 {
   "trainingInput": {
     "scaleTier": "CUSTOM",
-    "masterType": "n1-standard-32",
+    "masterType": "n1-highmem-8",
+    "masterConfig": {
+      "acceleratorConfig": {
+        "count": 1,
+        "type": "NVIDIA_TESLA_K80"
+      }
+    },
     "runtimeVersion": "1.13",
     "pythonVersion": "3.5"
   }
 }
+

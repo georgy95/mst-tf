@@ -25,10 +25,7 @@ def train_mst(
 
     # create data input
     ds = create_tf_dataset(datapath=datapath)
-    ds = ds.map(map_func=lambda Fcs,Ic,Is: (Fcs, Ic, Is), num_parallel_calls=32)
-
-    sample_ds = ds.take(1).cache().repeat()
-    sample_ds = sample_ds.batch(batch_size).prefetch(1)
+    ds = ds.map(map_func=lambda Fcs,Ic,Is: (Fcs, Ic, Is), num_parallel_calls=32).batch(batch_size).prefetch(1)
 
     # create optimizera
     opt = tf.optimizers.Adam(1e-4)
@@ -49,7 +46,9 @@ def train_mst(
             content_loss, style_loss = model.get_loss(Ics, Ic, Is, batch_size=batch_size)
             loss = 0.01 * style_loss + content_loss
             gradients = tape.gradient(loss, model.decoder.trainable_variables)
-            opt.apply_gradients(zip(gradients, model.decoder.trainable_variables))
+            gvs = zip(gradients, model.decoder.trainable_variables)
+            # capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+            opt.apply_gradients(gvs)
 
         # Update the metrics
         loss_metric.update_state(loss)
@@ -64,7 +63,7 @@ def train_mst(
         style_loss_metric.reset_states()
         content_loss_metric.reset_states()
 
-        for Fcs, Ic, Is in sample_ds.take(steps_per_epoch):
+        for Fcs, Ic, Is in ds.take(steps_per_epoch):
             Ics = train_step(Fcs, Ic, Is)
 
 
@@ -133,7 +132,7 @@ if __name__ == '__main__':
         "batch_size": 1, 
         "datapath": args.datapath,
         "num_epochs":1000,
-        "steps_per_epoch": 3,
+        "steps_per_epoch": 5,
         "decoder_weights": args.weights,
         "log_weight_path": os.path.join(args.job_dir, 'weights'),
         "log_tensorboard_path": os.path.join(args.job_dir, 'tensorboard'),        

@@ -104,9 +104,10 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
             fcfc = np.dot(fc, fc.T) / (fc.shape[1] - 1) # CxC
             # assert is_pos_def(fcfc), 'Must be +ve definite'
             Ec, wc, _ = np.linalg.svd(fcfc) # CxC
-            k_c = (wc > 1e-5).sum()
+            k_c = (wc > 1e-6).sum()
             Dc = np.diag((wc[:k_c]+epsilon)**-0.5)
-            fc_hat = Ec[:,:k_c].dot(Dc).dot(Ec[:,:k_c].T).dot(fc)
+            Wc = Ec[:,:k_c].dot(Dc).dot(Ec[:,:k_c].T)
+            fc_hat = Wc.dot(fc)
 
             # Style
             fsfs = np.dot(fs, fs.T) / (fs.shape[1] - 1)
@@ -149,7 +150,7 @@ class DataLoader(object):
         self.im_shape = (None, None, 3)
         self.crop_im_shape = (256, 256, 3)
         self.total_imgs = None
-        self.k = 3
+        self.k = 5
         self.vgg = self.build_vgg()
         print('Initiating DataLoader with data from {}'.format(datapath))
         
@@ -238,7 +239,7 @@ class DataLoader(object):
         """Loads a batch of images from datapath folder"""     
 
         content_idx = np.random.randint(0, self.num_content_pics)
-        content_img = self.load_img(self.content_img_paths[content_idx], content=False)
+        content_img = self.load_img(self.content_img_paths[content_idx], content=True)
         vgg_content_img = np.expand_dims(content_img, 0)
 
         style_idx = np.random.randint(0, self.num_style_pics)
@@ -282,7 +283,7 @@ def restore_original_image(x, data_format='channels_first'):
             # 'BGR'->'RGB'
             x = x[..., ::-1]
 
-        return x.astype(np.uint8)
+        return np.clip(x, 0, 255).astype(np.uint8)
 
 
 def create_tf_dataset(datapath):
@@ -336,12 +337,6 @@ def plot_test_images(Ics, Ic, Is, log_test_path, epoch, filename='test_output'):
     Oc = restore_original_image(Ic, 'channels_last')
     Os = restore_original_image(Is, 'channels_last')
 
-
-    # print('Ocs ', np.where(Ocs == 255, 1, 0).sum())
-    # print('Ocs ', np.where(Ocs == 0, 1, 0).sum())
-
-    # print('Oc ', np.where(Oc == 255, 1, 0).sum())
-    # print('Os ', np.where(Os == 255, 1, 0).sum())
 
     # Images and titles
     images = {

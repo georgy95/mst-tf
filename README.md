@@ -4,9 +4,10 @@ Paper implementation of [Multimodal Style Transfer via Graph Cuts](https://arxiv
 
 
 ## Results 
+`alpha=1`
 
 ![Image](images/test_output_1.png)
-![Image](images/test_output_3.png)
+![Image](images/test_output_2.png)
 
 
 ## Training

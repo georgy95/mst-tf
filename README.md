@@ -2,6 +2,13 @@
 
 Paper implementation of [Multimodal Style Transfer via Graph Cuts](https://arxiv.org/abs/1904.04443)
 
+
+## Results 
+
+![Image](images/test_output_1.png)
+![Image](images/test_output_3.png)
+
+
 ## Training
 
 To start local training (after building the image datapath structure), simply run:

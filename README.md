@@ -4,6 +4,9 @@ Paper implementation of [Multimodal Style Transfer via Graph Cuts](https://arxiv
 
 
 ## Results 
+
+Open `Test.ipynb` to run your own tests.
+
 `alpha=1`
 
 ![Image](images/test_output_1.png)

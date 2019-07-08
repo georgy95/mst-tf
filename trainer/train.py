@@ -28,7 +28,7 @@ def train_mst(
     ds = ds.map(map_func=lambda Fcs,Ic,Is: (Fcs, Ic, Is), num_parallel_calls=32).batch(batch_size).prefetch(1)
 
     # create optimizera
-    opt = tf.optimizers.Adam(1e-4)
+    opt = tf.optimizers.Adam(2e-4)
 
     # tensorboard summary
     summary_writer = tf.summary.create_file_writer(log_tensorboard_path)

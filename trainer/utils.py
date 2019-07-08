@@ -39,12 +39,12 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
     vgg_feature_w = Fc.shape[2] # W
     vgg_feature_c = Fc.shape[3] # 512
 
-    Fs = Fs.reshape((-1, 512)).astype(np.float64) 
-    Fc = Fc.reshape((-1, 512)).astype(np.float64)
+    Fs = Fs.reshape((-1, vgg_feature_c)).astype(np.float64) 
+    Fc = Fc.reshape((-1, vgg_feature_c)).astype(np.float64)
 
 
     def apply_kmeans(Fs, k):
-        KM = KMeans(n_clusters=k, random_state=0, max_iter=1000)
+        KM = KMeans(init='k-means++', n_clusters=k, n_init=10, max_iter=500, precompute_distances=True)
         KM.fit(Fs)
         return KM
 
@@ -60,7 +60,7 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
         return content_labels
 
 
-    def calc_Fcs(Fc, Fs, Lc, Ls, a, k, epsilon=1e-5):
+    def calc_Fcs(Fc, Fs, Lc, Ls, a, k, epsilon=1e-6):
         
         def is_pos_def(x):
             return np.all(np.linalg.eigvals(x) >= -epsilon)
@@ -71,9 +71,12 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
 
         # for each cluster, get corresponding Fc and Fs and update them
         for j in range(k):
+            
             # get style and content indices
             style_indices = np.where(Ls.reshape((-1,)) == j)[0]
             content_indices = np.where(Lc.reshape((-1,)) == j)[0]
+
+            # print('Found {0} content features associated with cluster {1}'.format(len(content_indices),j))
 
             if len(content_indices) == 0:
                 # No content features found with this label, skipping to next label
@@ -101,20 +104,21 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
             
 
             # Content
-            fcfc = np.dot(fc, fc.T) / (fc.shape[1] - 1) # CxC
+            fcfc = np.dot(fc, fc.T) # / (fc.shape[1] - 1) # CxC
             # assert is_pos_def(fcfc), 'Must be +ve definite'
             Ec, wc, _ = np.linalg.svd(fcfc) # CxC
-            k_c = (wc > 1e-6).sum()
-            Dc = np.diag((wc[:k_c]+epsilon)**-0.5)
+            k_c = (wc > epsilon).sum()
+            Dc = np.diag((wc[:k_c])**-0.5)
             Wc = Ec[:,:k_c].dot(Dc).dot(Ec[:,:k_c].T)
             fc_hat = Wc.dot(fc)
+            # print(np.dot(fc_hat, fc_hat.T)) 
 
             # Style
-            fsfs = np.dot(fs, fs.T) / (fs.shape[1] - 1)
+            fsfs = np.dot(fs, fs.T) # / (fs.shape[1] - 1)
             # assert is_pos_def(fsfs), 'Must be +ve definite'
             Es, ws, _ = np.linalg.svd(fsfs)
-            k_s = (ws > 1e-5).sum()
-            Ds = np.sqrt(np.diag(ws[:k_s]+epsilon))
+            k_s = (ws > epsilon).sum()
+            Ds = np.diag(ws[:k_s] ** 0.5)
 
             fcs_hat = Es[:,:k_s].dot(Ds).dot(Es[:,:k_s].T).dot(fc_hat)
 
@@ -128,13 +132,12 @@ def get_Fcs(Fc, Fs, k=3, alpha=1):
             Fcs[content_indices, :] = fcs_hat
 
         Fcs = a * Fcs + (1 - a) * Fc
-
         return Fcs
 
     KM = apply_kmeans(Fs, k) 
     Ls = get_style_feature_map(KM) # (1024, 512)
     Lc = get_content_feature_map(Fc, KM, k) # (32, 32)
-    Fcs = calc_Fcs(Fc, Fs, Lc, Ls, a=alpha, k=k).reshape((vgg_feature_h, vgg_feature_w, 512))
+    Fcs = calc_Fcs(Fc, Fs, Lc, Ls, a=alpha, k=k).reshape((vgg_feature_h, vgg_feature_w, vgg_feature_c))
 
     return Fcs
 
@@ -150,7 +153,7 @@ class DataLoader(object):
         self.im_shape = (None, None, 3)
         self.crop_im_shape = (256, 256, 3)
         self.total_imgs = None
-        self.k = 5
+        self.k = 3
         self.vgg = self.build_vgg()
         print('Initiating DataLoader with data from {}'.format(datapath))
         
@@ -239,7 +242,7 @@ class DataLoader(object):
         """Loads a batch of images from datapath folder"""     
 
         content_idx = np.random.randint(0, self.num_content_pics)
-        content_img = self.load_img(self.content_img_paths[content_idx], content=True)
+        content_img = self.load_img(self.content_img_paths[content_idx], content=False)
         vgg_content_img = np.expand_dims(content_img, 0)
 
         style_idx = np.random.randint(0, self.num_style_pics)
@@ -249,7 +252,7 @@ class DataLoader(object):
         Fs = np.array(self.vgg(vgg_style_img))
         Fc = np.array(self.vgg(vgg_content_img))
 
-        alpha = np.random.uniform(low=1, high=1)
+        alpha = np.random.uniform(low=1.0, high=1.0)
         Fcs = get_Fcs(Fc, Fs, k=self.k, alpha=alpha)
 
         return Fcs, content_img, style_img

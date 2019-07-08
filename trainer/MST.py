@@ -102,7 +102,7 @@ class MST:
             return tf.reduce_sum(tf.math.squared_difference(x, y))
 
         def content_loss(y_pred, y_true):
-            current, target = vgg_model(y_pred)[3], vgg_model(y_true)[3]
+            current, target = vgg_model(y_pred)[3], vgg_model(y_true)[3] 
             # diff = current - target
             # sq = K.square(diff)
             # loss = K.mean(sq)
@@ -122,8 +122,8 @@ class MST:
                 d_std = tf.sqrt(d_var + epsilon)
                 s_std = tf.sqrt(s_var + epsilon)
 
-                mu_loss = mse(d_mean, s_mean) / batch_size
-                std_loss = mse(d_std, s_std) / batch_size
+                mu_loss = sse(d_mean, s_mean) / batch_size
+                std_loss = sse(d_std, s_std) / batch_size
 
                 mu_std_loss = mu_loss + std_loss
                 style_loss += mu_std_loss

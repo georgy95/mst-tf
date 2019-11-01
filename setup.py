@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = ['tensorflow-gpu==2.0.0a', 'Pillow==5.4.1', 'h5py', 'matplotlib', 'PyMaxflow']
+REQUIRED_PACKAGES = ['tensorflow-gpu==2.0.0a', 'Pillow==6.2.0', 'h5py', 'matplotlib', 'PyMaxflow']
 
 setup(
     name='trainer',
